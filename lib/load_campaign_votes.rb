@@ -6,21 +6,22 @@ module LogParser
   class LoadCampaignVotes
 
     DELIMITED_KEYS = %w(Campaign Validity CONN MSISDN GUID Shortcode)
-    SQLITE3_INSERT_VOTE_STMT = "INSERT INTO votes (vote_date, campaign, validity, choice) VALUES ("
+    SQLITE3_INSERT_VOTE_STMT = "INSERT INTO votes (voted_at, campaign_id, validity, choice, created_at, updated_at) VALUES ("
 
-    def initialize
+    def initialize(filename)
       @errors = []
       @insert = []
       @campaigns = []
+      @filename = filename
     end
 
     def main
       get_existing_campaigns
-      readfile("data/three_votes.txt")
-      # only display errors if there are entries in the 'tmp/errors.txt' file
+      readfile("data/#{@filename}")
+      # # only display errors if there are entries in the 'tmp/errors.txt' file
       campaigns
       errors
-      write_files("insert_to_votes.txt", 'campaign votes')
+      write_files("insert_to_votes.sql", 'campaign votes')
       write_files("errors.txt", 'error')
     end
 
@@ -42,7 +43,8 @@ module LogParser
           if choice.match(/Choice|error/) || choice.nil?
             @errors << row[0]
           else
-            @insert << "#{SQLITE3_INSERT_VOTE_STMT} #{voted_at(data)}, #{campaign}, '#{validity(data)}', '#{choice}');"
+            data_values = "#{voted_at(data)}, #{campaign}, '#{validity(data)}', '#{choice}', datetime('now'), datetime('now'));"
+            @insert << "#{SQLITE3_INSERT_VOTE_STMT} #{data_values}"
           end
         end
       end
@@ -102,7 +104,7 @@ module LogParser
 
     def write_files(file, type)
       f = File.open("tmp/#{file}", 'w')
-      f.puts "# Output Type: #{type}"
+      # f.puts "# Output Type: #{type}"
       if type == 'error'
         f.puts @errors
       else
